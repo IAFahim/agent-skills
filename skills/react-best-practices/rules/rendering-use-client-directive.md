@@ -27,7 +27,7 @@ function Sidebar() {
 
 This crashes during server rendering because `window` doesn't exist on the server.
 
-**Correct (guard browser APIs with typeof check or useEffect):**
+**Correct (guard browser APIs with useEffect):**
 
 ```tsx
 'use client'
@@ -38,9 +38,6 @@ function Sidebar() {
   useEffect(() => {
     // Safe: only runs in browser after hydration
     setWidth(window.innerWidth)
-    const handleResize = () => setWidth(window.innerWidth)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   return <nav style={{ width: width > 768 ? 250 : '100%' }}>...</nav>
