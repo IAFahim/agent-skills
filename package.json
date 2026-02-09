@@ -4,6 +4,7 @@
   "description": "A collection of skills for AI coding agents",
   "scripts": {
     "build-unity": "cd packages/react-best-practices-build && npm run build-unity",
+    "validate-unity": "cd packages/react-best-practices-build && npm run validate-unity",
     "build-all": "cd packages/react-best-practices-build && npm run build-all"
   }
 }
