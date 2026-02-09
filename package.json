@@ -1,0 +1,9 @@
+{
+  "name": "agent-skills",
+  "version": "1.0.0",
+  "description": "A collection of skills for AI coding agents",
+  "scripts": {
+    "build-unity": "cd packages/react-best-practices-build && npm run build-unity",
+    "build-all": "cd packages/react-best-practices-build && npm run build-all"
+  }
+}

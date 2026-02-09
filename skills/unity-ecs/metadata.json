@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0",
+  "organization": "IAFahim",
+  "date": "February 2026",
+  "abstract": "Elite Unity ECS (Entities) architecture with strict 4-layer design, prioritizing archetype optimization, Burst compilation, and Data-Oriented Design patterns.",
+  "references": [
+    "https://docs.unity3d.com/Packages/com.unity.entities@latest",
+    "https://docs.unity3d.com/Packages/com.unity.burst@latest",
+    "https://docs.unity3d.com/Manual/BestPracticeUnderstandingPerformanceInUnity.html"
+  ]
+}

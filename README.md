@@ -84,6 +84,26 @@ React composition patterns that scale. Helps avoid boolean prop proliferation th
 - Composing internals for flexibility
 - Avoiding prop drilling
 
+### unity-ecs
+
+Unity Entity Component System (DOTS) architecture and performance optimization guidelines. Elite 4-layer design patterns for optimal ECS performance.
+
+**Use when:**
+- Building Unity ECS systems with DOTS
+- Writing Burst-compiled jobs
+- Optimizing archetype chunks and structural changes
+- Reviewing ECS code for performance issues
+
+**Categories covered:**
+- Architecture (Critical) - 4-layer design, ECR principle
+- Archetypes (Critical) - Chunk iteration optimization
+- Structural Changes (Critical) - EntityCommandBuffer batching
+- Burst (Critical/High) - Unity.Mathematics, RefRW/RefRO
+- Components (High) - IEnableableComponent usage
+- Systems (High) - System ordering and dependencies
+- Jobs (High) - IJobEntity patterns
+- Memory (High) - Constants and allocation patterns
+
 ### vercel-deploy-claimable
 
 Deploy applications and websites to Vercel instantly. Designed for use with claude.ai and Claude Desktop to enable deployments directly from conversations. Deployments are "claimable" - users can transfer ownership to their own Vercel account.

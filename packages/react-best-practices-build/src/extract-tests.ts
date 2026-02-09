@@ -7,7 +7,18 @@ import { readdir, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { Rule, TestCase } from './types.js'
 import { parseRuleFile } from './parser.js'
-import { RULES_DIR, TEST_CASES_FILE } from './config.js'
+import { SKILLS, DEFAULT_SKILL, BUILD_DIR } from './config.js'
+
+// Parse args
+const args = process.argv.slice(2)
+const skillArg = args.find((arg) => arg.startsWith('--skill='))
+const skillName = skillArg ? skillArg.split('=')[1] : DEFAULT_SKILL
+const skillConfig = SKILLS[skillName]
+
+if (!skillConfig) {
+  console.error(`Unknown skill: ${skillName}`)
+  process.exit(1)
+}
 
 /**
  * Extract test cases from a rule
@@ -42,19 +53,22 @@ function extractTestCases(rule: Rule): TestCase[] {
  */
 async function extractTests() {
   try {
-    console.log('Extracting test cases from rules...')
-    console.log(`Rules directory: ${RULES_DIR}`)
-    console.log(`Output file: ${TEST_CASES_FILE}`)
-    
-    const files = await readdir(RULES_DIR)
+    console.log(`Extracting test cases from ${skillConfig.title}...`)
+    console.log(`Rules directory: ${skillConfig.rulesDir}`)
+
+    // Create skill-specific test file (e.g., test-cases-unity-ecs.json)
+    const outputFile = join(BUILD_DIR, `test-cases-${skillConfig.name}.json`)
+    console.log(`Output file: ${outputFile}`)
+
+    const files = await readdir(skillConfig.rulesDir)
     const ruleFiles = files.filter(f => f.endsWith('.md') && !f.startsWith('_') && f !== 'README.md')
-    
+
     const allTestCases: TestCase[] = []
-    
+
     for (const file of ruleFiles) {
-      const filePath = join(RULES_DIR, file)
+      const filePath = join(skillConfig.rulesDir, file)
       try {
-        const { rule } = await parseRuleFile(filePath)
+        const { rule } = await parseRuleFile(filePath, skillConfig.sectionMap)
         const testCases = extractTestCases(rule)
         allTestCases.push(...testCases)
       } catch (error) {
@@ -63,9 +77,9 @@ async function extractTests() {
     }
     
     // Write test cases as JSON
-    await writeFile(TEST_CASES_FILE, JSON.stringify(allTestCases, null, 2), 'utf-8')
-    
-    console.log(`✓ Extracted ${allTestCases.length} test cases to ${TEST_CASES_FILE}`)
+    await writeFile(outputFile, JSON.stringify(allTestCases, null, 2), 'utf-8')
+
+    console.log(`✓ Extracted ${allTestCases.length} test cases to ${outputFile}`)
     console.log(`  - Bad examples: ${allTestCases.filter(tc => tc.type === 'bad').length}`)
     console.log(`  - Good examples: ${allTestCases.filter(tc => tc.type === 'good').length}`)
   } catch (error) {

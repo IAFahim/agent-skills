@@ -83,6 +83,26 @@ export const SKILLS: Record<string, SkillConfig> = {
       react19: 4,
     },
   },
+  'unity-ecs': {
+    name: 'unity-ecs',
+    title: 'Unity ECS Best Practices',
+    description: 'Unity Entity Component System (DOTS) codebases',
+    skillDir: join(SKILLS_DIR, 'unity-ecs'),
+    rulesDir: join(SKILLS_DIR, 'unity-ecs/rules'),
+    metadataFile: join(SKILLS_DIR, 'unity-ecs/metadata.json'),
+    outputFile: join(SKILLS_DIR, 'unity-ecs/AGENTS.md'),
+    sectionMap: {
+      arch: 1,
+      archetype: 2,
+      structural: 3,
+      memory: 4,
+      burst: 5,
+      system: 6,
+      job: 7,
+      component: 8,
+      debug: 9,
+    },
+  },
 }
 
 // Default skill (for backwards compatibility)

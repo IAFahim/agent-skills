@@ -234,7 +234,14 @@ export async function parseRuleFile(
   }
 
   // Fall back to frontmatter section if specified
-  section = frontmatter.section || section || 0
+  let rawSection = frontmatter.section || section || 0
+
+  // If frontmatter provided a string key (e.g. "arch"), resolve it using the map
+  if (typeof rawSection === 'string' && effectiveSectionMap[rawSection] !== undefined) {
+    section = effectiveSectionMap[rawSection]
+  } else {
+    section = Number(rawSection) || 0
+  }
 
   const rule: Rule = {
     id: '', // Will be assigned by build script based on sorted order

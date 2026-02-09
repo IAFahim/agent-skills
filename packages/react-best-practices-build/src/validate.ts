@@ -7,7 +7,18 @@ import { readdir } from 'fs/promises'
 import { join } from 'path'
 import { Rule } from './types.js'
 import { parseRuleFile } from './parser.js'
-import { RULES_DIR } from './config.js'
+import { SKILLS, DEFAULT_SKILL } from './config.js'
+
+// Parse args
+const args = process.argv.slice(2)
+const skillArg = args.find((arg) => arg.startsWith('--skill='))
+const skillName = skillArg ? skillArg.split('=')[1] : DEFAULT_SKILL
+const skillConfig = SKILLS[skillName]
+
+if (!skillConfig) {
+  console.error(`Unknown skill: ${skillName}`)
+  process.exit(1)
+}
 
 interface ValidationError {
   file: string
@@ -70,18 +81,18 @@ function validateRule(rule: Rule, file: string): ValidationError[] {
  */
 async function validate() {
   try {
-    console.log('Validating rule files...')
-    console.log(`Rules directory: ${RULES_DIR}`)
-    
-    const files = await readdir(RULES_DIR)
+    console.log(`Validating ${skillConfig.title} rules...`)
+    console.log(`Rules directory: ${skillConfig.rulesDir}`)
+
+    const files = await readdir(skillConfig.rulesDir)
     const ruleFiles = files.filter(f => f.endsWith('.md') && !f.startsWith('_'))
-    
+
     const allErrors: ValidationError[] = []
-    
+
     for (const file of ruleFiles) {
-      const filePath = join(RULES_DIR, file)
+      const filePath = join(skillConfig.rulesDir, file)
       try {
-        const { rule } = await parseRuleFile(filePath)
+        const { rule } = await parseRuleFile(filePath, skillConfig.sectionMap)
         const errors = validateRule(rule, file)
         allErrors.push(...errors)
       } catch (error) {

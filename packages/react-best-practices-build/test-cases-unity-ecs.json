@@ -1,0 +1,178 @@
+[
+  {
+    "ruleId": "",
+    "ruleTitle": "Follow 4-Layer Architecture",
+    "type": "bad",
+    "code": "// BAD: Logic mixed into component\npublic struct Health : IComponentData\n{\n    public float Value;\n    public float Max;\n\n    public void TakeDamage(float damage) // Logic in data!\n    {\n        Value = math.max(0, Value - damage);\n    }\n}\n\n// BAD: System doing logic that should be in Logic layer\n[BurstCompile]\npublic partial struct HealthSystem : ISystem\n{\n    public void OnUpdate(ref SystemState state)\n    {\n        foreach (var (health, damage) in SystemAPI.Query<RefRW<Health>, RefRO<Damage>>())\n        {\n            health.ValueRW.Value = math.max(0, health.ValueRO.Value - damage.ValueRO.Amount); // Logic here!\n        }\n    }\n}",
+    "language": "csharp",
+    "description": "Incorrect example for Follow 4-Layer Architecture"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Follow 4-Layer Architecture",
+    "type": "good",
+    "code": "// GOOD: Pure data component\npublic struct Health : IComponentData\n{\n    public float Value;\n    public float Max;\n}\n\n// GOOD: Logic layer - static utility\npublic static class HealthLogic\n{\n    [BurstCompile]\n    public static float ApplyDamage(float current, float damage)\n    {\n        return math.max(0, current - damage);\n    }\n\n    [BurstCompile]\n    public static float GetHealthPercent(float current, float max)\n    {\n        return current / max;\n    }\n}\n\n// GOOD: System layer - orchestration only\n[BurstCompile]\npublic partial struct HealthSystem : ISystem\n{\n    [BurstCompile]\n    public void OnUpdate(ref SystemState state)\n    {\n        var damageJob = new DamageJob\n        {\n            Damages = SystemAPI.GetComponentTypeHandle<Damage>(true),\n            Healths = SystemAPI.GetComponentTypeHandle<Health>(false)\n        };\n        state.Dependency = damageJob.ScheduleParallel(state.Dependency);\n    }\n}\n\n[BurstCompile]\npartial struct DamageJob : IJobEntity\n{\n    [ReadOnly] public ComponentTypeHandle<Damage> Damages;\n    public ComponentTypeHandle<Health> Healths;\n\n    void Execute(in Damage damage, ref Health health)\n    {\n        health.Value = HealthLogic.ApplyDamage(health.Value, damage.Amount); // Calls Logic layer\n    }\n}",
+    "language": "csharp",
+    "description": "Correct example for Follow 4-Layer Architecture"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Follow Entity-Component-Responsibility Principle",
+    "type": "bad",
+    "code": "// BAD: God component - too many responsibilities\npublic struct Character : IComponentData\n{\n    public float3 Position;\n    public float3 Velocity;\n    public float Health;\n    public float MaxHealth;\n    public float Mana;\n    public float MaxMana;\n    public float Stamina;\n    public float MaxStamina;\n    public int Level;\n    public float Experience;\n    public float AttackPower;\n    public float DefensePower;\n    public float Speed;\n    public bool IsDead;\n    public bool IsBlocking;\n    public bool IsAttacking;\n    public int Gold;\n    public float InventoryWeight;\n}",
+    "language": "csharp",
+    "description": "Incorrect example for Follow Entity-Component-Responsibility Principle"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Follow Entity-Component-Responsibility Principle",
+    "type": "good",
+    "code": "// GOOD: Entity is composed of focused components\n// A \"Player\" entity might have:\n// - LocalTransform\n// - Velocity\n// - Health\n// - Mana\n// - CharacterStats\n// - MovementState\n// - PlayerInput (unique to players)\n// - Inventory\n\n// A \"Enemy\" entity might have:\n// - LocalTransform\n// - Velocity\n// - Health\n// - CharacterStats\n// - MovementState\n// - AIController (unique to enemies)",
+    "language": "csharp",
+    "description": "Correct example for Follow Entity-Component-Responsibility Principle"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Optimize Archetype for Chunk Iteration",
+    "type": "bad",
+    "code": "// BAD: Random component combinations create many archetype variations\npublic struct RenderFlag : IComponentData { public bool ShouldRender; }\npublic struct PhysicsFlag : IComponentData { public bool HasPhysics; }\npublic struct AIFlag : IComponentData { public bool HasAI; }\n\n// Each unique combination creates a new archetype\n// Entity A: RenderFlag, PhysicsFlag\n// Entity B: RenderFlag, AIFlag\n// Entity C: PhysicsFlag, AIFlag\n// Entity D: RenderFlag, PhysicsFlag, AIFlag\n// Result: 4 different archetypes, poor iteration",
+    "language": "csharp",
+    "description": "Incorrect example for Optimize Archetype for Chunk Iteration"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Optimize Archetype for Chunk Iteration",
+    "type": "good",
+    "code": "// GOOD: Group related components together\npublic struct Moveable : IComponentData { }\npublic struct Static : IComponentData { }\n\n// Movement components only on Moveable entities\npublic struct Velocity : IComponentData { public float3 Value; }\npublic struct Acceleration : IComponentData { public float3 Value; }\n\n// Physics components only on entities that need physics\npublic struct PhysicsBody : IComponentData { public float Mass; }\npublic struct PhysicsMaterial : IComponentData { public float Friction; }\n\n// Clean archetype separation:\n// Moveable entities: LocalTransform, Moveable, Velocity, Acceleration\n// Static entities: LocalTransform, Static\n// Physics entities: LocalTransform, Moveable, Velocity, PhysicsBody, PhysicsMaterial",
+    "language": "csharp",
+    "description": "Correct example for Optimize Archetype for Chunk Iteration"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Use Unity.Mathematics Types Exclusively",
+    "type": "bad",
+    "code": "// BAD: UnityEngine types cause Burst errors\nusing UnityEngine;\n\npublic struct Velocity : IComponentData\n{\n    public Vector3 Value; // Not Burst-compatible!\n}\n\n[BurstCompile] // Will fail to compile!\npublic partial struct MovementSystem : ISystem\n{\n    public void OnUpdate(ref SystemState state)\n    {\n        foreach (var (transform, velocity) in SystemAPI.Query<RefRW<LocalTransform>, RefRO<Velocity>>())\n        {\n            transform.ValueRW.Position += velocity.ValueRO.Value * SystemAPI.Time.DeltaTime;\n        }\n    }\n}",
+    "language": "csharp",
+    "description": "Incorrect example for Use Unity.Mathematics Types Exclusively"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Use Unity.Mathematics Types Exclusively",
+    "type": "good",
+    "code": "// GOOD: Unity.Mathematics types\nusing Unity.Mathematics;\n\npublic struct Velocity : IComponentData\n{\n    public float3 Value;\n}\n\n[BurstCompile]\npublic partial struct MovementSystem : ISystem\n{\n    public void OnUpdate(ref SystemState state)\n    {\n        float dt = SystemAPI.Time.DeltaTime;\n\n        foreach (var (transform, velocity) in SystemAPI.Query<RefRW<LocalTransform>, RefRO<Velocity>>())\n        {\n            transform.ValueRW.Position += velocity.ValueRO.Value * dt;\n        }\n    }\n}",
+    "language": "csharp",
+    "description": "Correct example for Use Unity.Mathematics Types Exclusively"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Use RefRW/RefRO instead of IAspect",
+    "type": "bad",
+    "code": "// BAD: IAspect abstraction\npublic readonly partial struct CharacterAspect : IAspect\n{\n    public readonly RefRW<Health> Health;\n    public readonly RefRW<Mana> Mana;\n    public readonly RefRO<CharacterStats> Stats;\n\n    public void TakeDamage(float damage)\n    {\n        Health.ValueRW.Value -= damage;\n    }\n\n    public void CastMana(float cost)\n    {\n        Mana.ValueRW.Value -= cost;\n    }\n}\n\n[BurstCompile]\npublic partial struct CombatSystem : ISystem\n{\n    public void OnUpdate(ref SystemState state)\n    {\n        foreach (var character in SystemAPI.Query<CharacterAspect>())\n        {\n            character.TakeDamage(10);\n            character.CastMana(5);\n        }\n    }\n}",
+    "language": "csharp",
+    "description": "Incorrect example for Use RefRW/RefRO instead of IAspect"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Use RefRW/RefRO instead of IAspect",
+    "type": "good",
+    "code": "// GOOD: Direct RefRW/RefRO access\n[BurstCompile]\npublic partial struct CombatSystem : ISystem\n{\n    public void OnUpdate(ref SystemState state)\n    {\n        foreach (var (health, mana, stats) in SystemAPI.Query<RefRW<Health>, RefRW<Mana>, RefRO<CharacterStats>>())\n        {\n            float damage = CombatLogic.CalculateDamage(stats.ValueRO);\n            health.ValueRW.Value = HealthLogic.ApplyDamage(health.ValueRO.Value, damage);\n\n            float manaCost = 5.0f;\n            mana.ValueRW.Value = ManaLogic.ConsumeMana(mana.ValueRO.Value, manaCost);\n        }\n    }\n}\n\n// GOOD: Logic layer for reusable operations\npublic static class HealthLogic\n{\n    [BurstCompile]\n    public static float ApplyDamage(float current, float damage)\n    {\n        return math.max(0, current - damage);\n    }\n}\n\npublic static class ManaLogic\n{\n    [BurstCompile]\n    public static float ConsumeMana(float current, float cost)\n    {\n        return math.max(0, current - cost);\n    }\n}",
+    "language": "csharp",
+    "description": "Correct example for Use RefRW/RefRO instead of IAspect"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Use IEnableableComponent for State Toggling",
+    "type": "bad",
+    "code": "// BAD: Adding/removing components for state\npublic struct Stunned : IComponentData { }\n\n[BurstCompile]\npublic partial struct StunSystem : ISystem\n{\n    public void OnUpdate(ref SystemState state)\n    {\n        var ecb = new EntityCommandBuffer(Allocator.TempJob);\n\n        foreach (var (entity, stunRequest) in SystemAPI.Query<EntityRef, RefRO<StunRequest>>())\n        {\n            ecb.AddComponent(entity, new Stunned()); // Structural change\n        }\n\n        foreach (var entity in SystemAPI.Query<EntityRef>().WithAll<Stunned>())\n        {\n            if (stunExpired)\n            {\n                ecb.RemoveComponent<Stunned>(entity); // Structural change\n            }\n        }\n\n        ecb.Playback(state.EntityManager);\n        ecb.Dispose();\n    }\n}",
+    "language": "csharp",
+    "description": "Incorrect example for Use IEnableableComponent for State Toggling"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Use IEnableableComponent for State Toggling",
+    "type": "good",
+    "code": "// GOOD: Use IEnableableComponent\npublic struct Stunned : IComponentData, IEnableableComponent { }\n\n[BurstCompile]\npublic partial struct StunSystem : ISystem\n{\n    public void OnUpdate(ref SystemState state)\n    {\n        foreach (var (stunned, stunRequest) in SystemAPI.Query<EnabledRefRW<Stunned>, RefRO<StunRequest>>())\n        {\n            stunned.Value = true; // No structural change\n        }\n\n        foreach (var (stunned, stunTimer) in SystemAPI.Query<EnabledRefRW<Stunned>, RefRW<StunTimer>>())\n        {\n            stunTimer.ValueRW.TimeLeft -= SystemAPI.Time.DeltaTime;\n\n            if (stunTimer.ValueRO.TimeLeft <= 0)\n            {\n                stunned.Value = false; // No structural change\n            }\n        }\n    }\n}",
+    "language": "csharp",
+    "description": "Correct example for Use IEnableableComponent for State Toggling"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Use Side Comments Only, No Block Comments",
+    "type": "bad",
+    "code": "// BAD: Block comments\n/// <summary>\n/// Represents the health component for entities.\n/// Contains current and maximum health values.\n/// </summary>\npublic struct Health : IComponentData\n{\n    public float Value;\n    public float Max;\n}\n\n/*\n * BAD: Multi-line block comment\n * This system handles damage application\n * and health reduction for all entities.\n */\n[BurstCompile]\npublic partial struct DamageSystem : ISystem\n{\n    public void OnUpdate(ref SystemState state)\n    {\n        // Apply damage to all entities\n        foreach (var (health, damage) in SystemAPI.Query<RefRW<Health>, RefRO<Damage>>())\n        {\n            // Reduce health by damage amount\n            health.ValueRW.Value -= damage.ValueRO.Amount;\n        }\n    }\n}",
+    "language": "csharp",
+    "description": "Incorrect example for Use Side Comments Only, No Block Comments"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Use Side Comments Only, No Block Comments",
+    "type": "good",
+    "code": "// GOOD: Code is clear without comments\npublic static class HealthLogic\n{\n    [BurstCompile]\n    public static float ApplyDamage(float current, float damage)\n    {\n        return math.max(0, current - damage); // Clamp to zero\n    }\n\n    [BurstCompile]\n    public static bool IsDead(float health)\n    {\n        return health <= 0;\n    }\n}",
+    "language": "csharp",
+    "description": "Correct example for Use Side Comments Only, No Block Comments"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Use IJobEntity over Entities.ForEach",
+    "type": "bad",
+    "code": "// BAD: Legacy Entities.ForEach\n[BurstCompile]\npublic partial struct MovementSystem : SystemBase\n{\n    protected override void OnUpdate()\n    {\n        float dt = Time.DeltaTime;\n\n        Entities\n            .ForEach((ref Translation translation, in Velocity velocity) =>\n            {\n               .Value += velocity.Value * dt;\n            })\n            .ScheduleParallel();\n    }\n}",
+    "language": "csharp",
+    "description": "Incorrect example for Use IJobEntity over Entities.ForEach"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Use IJobEntity over Entities.ForEach",
+    "type": "good",
+    "code": "// GOOD: Explicit read/write specification\n[BurstCompile]\npartial struct PhysicsJob : IJobEntity\n{\n    public float DeltaTime;\n    public float Gravity;\n\n    void Execute(\n        RefRW<LocalTransform> transform,\n        RefRW<Velocity> velocity,\n        RefRO<Mass> mass,\n        RefRO<GravityEnabled> gravityEnabled)\n    {\n        if (!gravityEnabled.ValueRO.Value) return;\n\n        velocity.ValueRW.Value.y += Gravity * DeltaTime / mass.ValueRO.Value;\n        transform.ValueRW.Position.xyz += velocity.ValueRO.Value * DeltaTime;\n    }\n}",
+    "language": "csharp",
+    "description": "Correct example for Use IJobEntity over Entities.ForEach"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Define Constants in Logic Classes",
+    "type": "bad",
+    "code": "// BAD: Magic numbers scattered everywhere\n[BurstCompile]\npublic partial struct MovementSystem : ISystem\n{\n    public void OnUpdate(ref SystemState state)\n    {\n        float dt = SystemAPI.Time.DeltaTime;\n\n        foreach (var (transform, velocity) in SystemAPI.Query<RefRW<LocalTransform>, RefRW<Velocity>>())\n        {\n            // Magic numbers!\n            velocity.ValueRW.Value *= 0.95f;\n            velocity.ValueRW.Value = math.clamp(velocity.ValueRW.Value, -50.0f, 50.0f);\n            transform.ValueRW.Position.y = math.max(transform.ValueRW.Position.y, 0.1f);\n        }\n    }\n}",
+    "language": "csharp",
+    "description": "Incorrect example for Define Constants in Logic Classes"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Define Constants in Logic Classes",
+    "type": "good",
+    "code": "// BETTER: Constants grouped by system\npublic static class GameConstants\n{\n    public static class Movement\n    {\n        public const float FRICTION = 0.95f;\n        public const float MAX_VELOCITY = 50.0f;\n        public const float ACCELERATION = 100.0f;\n    }\n\n    public static class Combat\n    {\n        public const float MELEE_RANGE = 2.0f;\n        public const float MELEE_DAMAGE = 25.0f;\n        public const float ATTACK_COOLDOWN = 0.5f;\n    }\n\n    public static class Physics\n    {\n        public const float GRAVITY = -9.81f;\n        public const float GROUND_SNAP_DISTANCE = 0.1f;\n        public const int COLLISION_LAYERS = 32;\n    }\n}",
+    "language": "csharp",
+    "description": "Correct example for Define Constants in Logic Classes"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Batch Structural Changes with EntityCommandBuffer",
+    "type": "bad",
+    "code": "// BAD: Structural change per entity\n[BurstCompile]\npublic partial struct SpawnSystem : ISystem\n{\n    public void OnUpdate(ref SystemState state)\n    {\n        var prefab = SystemAPI.GetSingleton<EnemyPrefab>();\n\n        for (int i = 0; i < 1000; i++)\n        {\n            var entity = state.EntityManager.Instantiate(prefab); // Sync per iteration!\n            state.EntityManager.SetComponentData(entity, new SpawnPosition { Value = GetSpawnPoint(i) });\n        }\n    }\n}",
+    "language": "csharp",
+    "description": "Incorrect example for Batch Structural Changes with EntityCommandBuffer"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Batch Structural Changes with EntityCommandBuffer",
+    "type": "good",
+    "code": "// GOOD: Batch multiple operations on same entity\n[BurstCompile]\npublic partial struct DeathSystem : ISystem\n{\n    public void OnUpdate(ref SystemState state)\n    {\n        var ecb = new EntityCommandBuffer(Allocator.TempJob);\n\n        foreach (var (entity, health) in SystemAPI.Query<EntityRef, RefRO<Health>>())\n        {\n            if (health.ValueRO.Value <= 0)\n            {\n                ecb.RemoveComponent<Health>(entity);\n                ecb.RemoveComponent<Velocity>(entity);\n                ecb.AddComponent<Dead>(entity);\n                ecb.SetComponent(entity, new DeathTime { Value = (float)SystemAPI.Time.ElapsedTime });\n            }\n        }\n\n        ecb.Playback(state.EntityManager);\n        ecb.Dispose();\n    }\n}",
+    "language": "csharp",
+    "description": "Correct example for Batch Structural Changes with EntityCommandBuffer"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Use System Ordering Attributes",
+    "type": "bad",
+    "code": "// BAD: No ordering specified - race condition!\n[BurstCompile]\npublic partial struct MovementSystem : ISystem\n{\n    public void OnUpdate(ref SystemState state)\n    {\n        foreach (var (transform, velocity) in SystemAPI.Query<RefRW<LocalTransform>, RefRO<Velocity>>())\n        {\n            transform.ValueRW.Position += velocity.ValueRO.Value * SystemAPI.Time.DeltaTime;\n        }\n    }\n}\n\n[BurstCompile]\npublic partial struct CollisionSystem : ISystem\n{\n    public void OnUpdate(ref SystemState state)\n    {\n        foreach (var (transform, collision) in SystemAPI.Query<RefRW<LocalTransform>, RefRW<CollisionResponse>>())\n        {\n            transform.ValueRW.Position += collision.ValueRO.Pushback;\n        }\n    }\n}\n// Both systems write to LocalTransform - who runs first?",
+    "language": "csharp",
+    "description": "Incorrect example for Use System Ordering Attributes"
+  },
+  {
+    "ruleId": "",
+    "ruleTitle": "Use System Ordering Attributes",
+    "type": "good",
+    "code": "// GOOD: Explicit ordering\n[UpdateBefore(typeof(CollisionSystem))]\n[BurstCompile]\npublic partial struct MovementSystem : ISystem\n{\n    public void OnUpdate(ref SystemState state)\n    {\n        foreach (var (transform, velocity) in SystemAPI.Query<RefRW<LocalTransform>, RefRO<Velocity>>())\n        {\n            transform.ValueRW.Position += velocity.ValueRO.Value * SystemAPI.Time.DeltaTime;\n        }\n    }\n}\n\n[UpdateAfter(typeof(MovementSystem))]\n[BurstCompile]\npublic partial struct CollisionSystem : ISystem\n{\n    public void OnUpdate(ref SystemState state)\n    {\n        foreach (var (transform, collision) in SystemAPI.Query<RefRW<LocalTransform>, RefRW<CollisionResponse>>())\n        {\n            transform.ValueRW.Position += collision.ValueRO.Pushback;\n        }\n    }\n}",
+    "language": "csharp",
+    "description": "Correct example for Use System Ordering Attributes"
+  }
+]
